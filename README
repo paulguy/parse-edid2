@@ -1,0 +1,11 @@
+Compiling it:
+type make, needs libi2c from i2c-tools.
+
+Running it:
+USAGE: get-eedid [-s] [-d] [-o <output template>] <device path>
+-s      SMBus mode.
+-d      DDC2B mode.
+-o      Output template, in DDC2B mode '{}' will be replaced
+    with the page number.  In SMBus mode, it'll just be omitted.
+<device path> Path to i2c device.
+
