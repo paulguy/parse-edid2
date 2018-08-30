@@ -1,4 +1,4 @@
-OBJS   = eedid.o main.o
+OBJS   = eedid.o get-eedid.o
 TARGET = get-eedid
 CFLAGS = -Wall -Wextra -ggdb -Og
 LDFLAGS = -li2c
