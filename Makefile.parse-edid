@@ -1,0 +1,13 @@
+OBJS   = growablechar.o edid-structure.o edid.o parse-edid.o
+TARGET = parse-edid
+CFLAGS = -Wall -Wextra -ggdb -Og
+
+$(TARGET): $(OBJS)
+	$(CC) $(LDFLAGS) -o $(TARGET) $(OBJS)
+
+all: $(TARGET)
+
+clean:
+	rm -f $(TARGET) $(OBJS)
+
+.PHONY: clean

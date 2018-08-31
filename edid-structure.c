@@ -1,4 +1,8 @@
-const char convtable[32] = {
+const char EDID_MAGIC[8] = {
+    0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00
+};
+
+const char EDID_CONVTABLE[32] = {
     ' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G',
     'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
     'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W',

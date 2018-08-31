@@ -1,4 +1,5 @@
-extern const char convtable[32];
+const char EDID_MAGIC[8];
+extern const char EDID_CONVTABLE[32];
 
 #define INPUTTYPE_BITS (7)
 
@@ -58,7 +59,7 @@ typedef enum {
 
 typedef enum {
     TYPE_MONOCHROME = 0x00,
-    TYPE_RGB = 0x08,
+    TYPE_COLOR = 0x08,
     TYPE_NONRGB = 0x10,
     TYPE_UNDEF = 0x18
 } EDID_AnalogType;
@@ -131,10 +132,10 @@ typedef enum {
     STEREO_NONE = 0x0, /* 00 0 */
     STEREO_INVALID = 0x1, /* 00 1 */
     STEREO_FIELD = 0x2, /* 01 0 */
-    STEREO_REVEN = 0x3 /* 01 1 */
-    STEREO_SIMILAR = 0x4 /* 10 0 */
-    STEREO_LEVEN = 0x5 /* 10 1 */
-    STEREO_4WAY = 0x6 /* 11 0 */
+    STEREO_REVEN = 0x3, /* 01 1 */
+    STEREO_SIMILAR = 0x4, /* 10 0 */
+    STEREO_LEVEN = 0x5, /* 10 1 */
+    STEREO_4WAY = 0x6, /* 11 0 */
     STEREO_SBS = 0x7 /* 11 1 */
 } EDID_StereoMode;
 
@@ -239,7 +240,7 @@ typedef struct {
 
     unsigned short addressableLines[4];
     EDID_PreferredRate preferredRate[4];
-    EDID_CVTAspect aspects[4]
+    EDID_CVTAspect aspects[4];
     unsigned char rates[4];
 } EDID_CVT;
 
@@ -330,7 +331,7 @@ typedef struct {
     char text[13];
 } EDID_Text;
 
-typedef union
+typedef union {
     EDID_DescriptorType type;
     EDID_DTD DTD;
     EDID_NewerModes newerModes;
@@ -344,8 +345,8 @@ typedef union
 
 typedef struct { /* represents interpreted data, not literal structure */
     /* header */
-    char manuID[4];
-    unsigned short productID;
+    unsigned char manuID[4];
+    unsigned short productCode;
     unsigned int serial;
     unsigned char week;
     unsigned char year;
@@ -361,8 +362,8 @@ typedef struct { /* represents interpreted data, not literal structure */
     EDID_Levels levels;
     unsigned char attribs;
     
-    unsigned char hsize;
-    unsigned char vsize;
+    unsigned char width;
+    unsigned char height;
     unsigned char gamma;
     unsigned char features;
 
@@ -389,5 +390,156 @@ typedef struct { /* represents interpreted data, not literal structure */
     unsigned char extensions;
 
     unsigned char checksum;
-    int checksumGood;
+    unsigned int checksumBad;
 } EDID;
+
+typedef struct {
+    unsigned char xres;
+    unsigned char ar_vf;
+} __attribute__((aligned(1), packed)) EDID_RawTiming;
+
+typedef struct {
+    unsigned short DTDOrOther;
+    unsigned char zero1;
+    unsigned char type;
+    unsigned char zero2;
+    unsigned char text[13];
+} __attribute__((aligned(1), packed)) EDID_RawDescriptor;
+
+typedef struct {
+    unsigned short clock;
+    unsigned char hActive_lsb;
+    unsigned char hBlank_lsb;
+    unsigned char hActiveBlank_msb;
+    unsigned char vActive_lsb;
+    unsigned char vBlank_lsb;
+    unsigned char vActiveBlank_msb;
+    unsigned char hFrontPorch_lsb;
+    unsigned char hSyncPulse_lsb;
+    unsigned char vFrontSync_lsb;
+    unsigned char frontSync_msb;
+    unsigned char width_lsb;
+    unsigned char height_lsb;
+    unsigned char size_msb;
+    unsigned char hBorder;
+    unsigned char vBorder;
+    unsigned char features;
+} __attribute__((aligned(1), packed)) EDID_RawDTD;
+
+typedef struct {
+    unsigned char header[5];
+    unsigned char version;
+    unsigned char bitmaps[6];
+    unsigned char unused[6];
+} __attribute__((aligned(1), packed)) EDID_RawNewerModes;
+
+typedef struct {
+    unsigned char addrLines_lsb;
+    unsigned char lines_msb_pvr;
+    unsigned char ar_vr;
+} __attribute__((aligned(1), packed)) EDID_RawCVTTiming;
+
+typedef struct {
+    unsigned char header[5];
+    unsigned char version;
+    EDID_RawCVTTiming timings[4];
+} __attribute__((aligned(1), packed)) EDID_RawCVT;
+
+typedef struct {
+    unsigned char header[5];
+    unsigned char version;
+    unsigned char redA3_lsb;
+    unsigned char redA3_msb;
+    unsigned char redA2_lsb;
+    unsigned char redA2_msb;
+    unsigned char greenA3_lsb;
+    unsigned char greenA3_msb;
+    unsigned char greenA2_lsb;
+    unsigned char greenA2_msb;
+    unsigned char blueA3_lsb;
+    unsigned char blueA3_msb;
+    unsigned char blueA2_lsb;
+    unsigned char blueA2_msb;
+} __attribute__((aligned(1), packed)) EDID_RawDCM;
+
+typedef struct {
+    unsigned char header[5];
+    EDID_RawTiming timings[6];
+    unsigned char unused;
+} __attribute__((aligned(1), packed)) EDID_RawTimings;
+
+typedef struct {
+    unsigned char index;
+    unsigned char lsb;
+    unsigned char x_msb;
+    unsigned char y_msb;
+    unsigned char gamma;
+} __attribute__((aligned(1), packed)) EDID_RawWhitePoint;
+
+typedef struct {
+    unsigned char header[5];
+    EDID_RawWhitePoint whitepoints[2];
+    unsigned char unused[3];
+} __attribute__((aligned(1), packed)) EDID_RawWhitePoints;
+
+typedef struct {
+    unsigned char reserved;
+    unsigned char startFreq;
+    unsigned char c;
+    unsigned short m;
+    unsigned char k;
+    unsigned char j;
+} __attribute__((aligned(1), packed)) EDID_RawGTFLimits;
+
+typedef struct {
+    unsigned char version;
+    unsigned char clock_active_msb;
+    unsigned char active_lsb;
+    unsigned char ar_bitmap;
+    unsigned char ar_rb_prefs;
+    unsigned char scaling;
+    unsigned char prefVFR;
+} __attribute__((aligned(1), packed)) EDID_RawCVTLimits;
+
+typedef struct {
+    unsigned char header[4];
+    unsigned char msb;
+    unsigned char minvfr_lsb;
+    unsigned char maxvfr_lsb;
+    unsigned char minhlr_lsb;
+    unsigned char maxhlr_lsb;
+    unsigned char clock;
+    unsigned char infoType;
+    unsigned char info[7];
+} __attribute__((aligned(1), packed)) EDID_RawRangeLimits;
+
+typedef struct {
+    unsigned char magic[8];
+    unsigned char manuID[2];
+    unsigned short productCode;
+    unsigned int serial;
+    unsigned char week;
+    unsigned char year;
+    unsigned char verMajor;
+    unsigned char verMinor;
+    unsigned char attribs;
+    unsigned char width;
+    unsigned char height;
+    unsigned char gamma;
+    unsigned char features;
+    unsigned char rg_lsb;
+    unsigned char bw_lsb;
+    unsigned char redx_msb;
+    unsigned char redy_msb;
+    unsigned char greenx_msb;
+    unsigned char greeny_msb;
+    unsigned char bluex_msb;
+    unsigned char bluey_msb;
+    unsigned char whitex_msb;
+    unsigned char whitey_msb;
+    unsigned char timingsBitmap[3];
+    EDID_RawTiming timings[8];
+    unsigned char descs[4][18];
+    unsigned char extensions;
+    unsigned char checksum;
+} __attribute__((aligned(1), packed)) EDID_Raw;

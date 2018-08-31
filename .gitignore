@@ -1,3 +1,5 @@
 get-eedid
+parse-edid
 *.o
 *.bin
+test*
