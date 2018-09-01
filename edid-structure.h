@@ -1,11 +1,13 @@
-const char EDID_MAGIC[8];
-extern const char EDID_CONVTABLE[32];
+#ifndef _EDID_STRUCTURE_H_
+#define _EDID_STRUCTURE_H_
 
-#define INPUTTYPE_BITS (7)
+const char EDID_MAGIC[8];
+
+#define INPUTTYPE_BITS (0x80)
 
 typedef enum {
-    INPUT_ANALOG = 0x80,
-    INPUT_DIGITAL = 0x00
+    INPUT_ANALOG = 0x00,
+    INPUT_DIGITAL = 0x80
 } EDID_InputType;
 
 #define BITDEPTH_BITS (0x70)
@@ -26,9 +28,8 @@ typedef enum {
     INTERF_UNDEFINED = 0x00,
     INTERF_HDMIA = 0x01,
     INTERF_HDMIB = 0x02,
-    INTERF_MDDI = 0x03,
-    INTERF_DP = 0x04,
-    INTERF_RESERVED = 0x05
+    INTERF_MDDI = 0x04,
+    INTERF_DP = 0x05,
 } EDID_Interface;
 
 #define LEVELS_BITS (0x60)
@@ -64,12 +65,13 @@ typedef enum {
     TYPE_UNDEF = 0x18
 } EDID_AnalogType;
 
-#define STANDBY_BIT    (0x80)
-#define SUSPEND_BIT    (0x40)
-#define ACTIVEOFF_BIT  (0x20)
-#define SRGB_BIT       (0x04)
-#define PREFERRED_BIT  (0x02)
-#define CONTINUOUS_BIT (0x01)
+#define STANDBY_BIT       (0x80)
+#define SUSPEND_BIT       (0x40)
+#define ACTIVEOFF_BIT     (0x20)
+#define DISPLAY_TYPE_BITS (0x18)
+#define SRGB_BIT          (0x04)
+#define PREFERRED_BIT     (0x02)
+#define GTF_BIT    (0x01)
 
 #define MODE_720_400_70   (0x800000)
 #define MODE_720_400_88   (0x400000)
@@ -93,7 +95,7 @@ typedef enum {
 #define ASPECT_RATIO_BITS (0xC0)
 
 typedef enum {
-    ASPECT_16_10 = 0x00,
+    ASPECT_16_10_1_1 = 0x00,
     ASPECT_4_3 = 0x40,
     ASPECT_5_4 = 0x80,
     ASPECT_16_9 = 0xC0
@@ -104,12 +106,13 @@ typedef enum {
     DESCRIPTOR_NEWER_MODES = 0xF7,
     DESCRIPTOR_CVT = 0xF8,
     DESCRIPTOR_DCM = 0xF9,
-    DESCRIPTOR_TIMING = 0xFA,
+    DESCRIPTOR_TIMINGS = 0xFA,
     DESCRIPTOR_WHITEP = 0xFB,
     DESCRIPTOR_NAME = 0xFC,
     DESCRIPTOR_LIMITS = 0xFD,
     DESCRIPTOR_TEXT = 0xFE,
     DESCRIPTOR_SERIAL = 0xFF
+    DESCRIPTOR_UNKNOWN = 0x01;
 } EDID_DescriptorType;
 
 #define INTERLACED_BIT   (0x80)
@@ -144,15 +147,15 @@ typedef struct {
     unsigned short clock;
     unsigned short hActive;
     unsigned short hBlanking;
-    unsigned short hFrontPorch;
-    unsigned short hSyncPulse;
-    unsigned short hSize;
-    unsigned short hBorder;
     unsigned short vActive;
     unsigned short vBlanking;
+    unsigned short hFrontPorch;
+    unsigned short hSyncPulse;
     unsigned short vFrontPorch;
     unsigned short vSyncPulse;
-    unsigned short vSize;
+    unsigned short width;
+    unsigned short height;
+    unsigned short hBorder;
     unsigned short vBorder;
     unsigned char features;
 } EDID_DTD;
@@ -262,7 +265,7 @@ typedef struct {
     int resolutionsX[6];
     EDID_Aspect aspects[6];
     int vRefreshes[6];
-} EDID_Timing;
+} EDID_Timings;
 
 typedef struct {
     EDID_DescriptorType type;
@@ -271,7 +274,7 @@ typedef struct {
     unsigned short xes[2];
     unsigned short ys[2];
     unsigned char gammas[2];
-} EDID_WhitePoint;
+} EDID_WhitePoints;
 
 typedef enum {
     EXT_LIMITS_DEFAULT = 0x00,
@@ -331,16 +334,23 @@ typedef struct {
     char text[13];
 } EDID_Text;
 
+typedef struct {
+    EDID_DescriptorType type;
+    
+    char data[18]
+} EDID_Unknown;
+
 typedef union {
     EDID_DescriptorType type;
     EDID_DTD DTD;
     EDID_NewerModes newerModes;
     EDID_CVT CVT;
     EDID_DCM DCM;
-    EDID_Timing timing;
-    EDID_WhitePoint whitePoint;
+    EDID_Timings timings;
+    EDID_WhitePoints whitePoints;
     EDID_RangeLimits rangeLimits;
     EDID_Text text;
+    EDID_Unknown unknown;
 } EDID_Descriptor;
 
 typedef struct { /* represents interpreted data, not literal structure */
@@ -349,7 +359,7 @@ typedef struct { /* represents interpreted data, not literal structure */
     unsigned short productCode;
     unsigned int serial;
     unsigned char week;
-    unsigned char year;
+    unsigned short year;
     unsigned char verMajor;
     unsigned char verMinor;
 
@@ -366,24 +376,26 @@ typedef struct { /* represents interpreted data, not literal structure */
     unsigned char height;
     unsigned char gamma;
     unsigned char features;
+    EDID_DigitalType dType;
+    EDID_AnalogType aType;
 
     /* chromaticity coordinates */
-    unsigned short whitePointX;
-    unsigned short whitePointY;
     unsigned short redPointX;
     unsigned short redPointY;
     unsigned short greenPointX;
     unsigned short greenPointY;
     unsigned short bluePointX;
     unsigned short bluePointY;
+    unsigned short whitePointX;
+    unsigned short whitePointY;
 
     /* old timing bitmap */
     unsigned int oldModes;
 
     /* standard timing information */
-    int resolutionsX[8];
+    unsigned short resolutionsX[8];
     EDID_Aspect aspects[8];
-    int vRefreshes[8];
+    unsigned char vRefreshes[8];
 
     EDID_Descriptor descriptors[4];
 
@@ -543,3 +555,16 @@ typedef struct {
     unsigned char extensions;
     unsigned char checksum;
 } __attribute__((aligned(1), packed)) EDID_Raw;
+
+void unpackManuID(unsigned char *manuID, const unsigned char *data);
+const char *inputTypeToStr(EDID_InputType i);
+const char *bitDepthToStr(EDID_BitDepth b);
+const char *interfaceToStr(EDID_Interface i);
+const char *voltsToStr(EDID_Levels l);
+const char *dTypeToStr(EDID_DigitalType t);
+const char *aTypeToStr(EDID_AnalogType t);
+int versionCompare(unsigned char major1, unsigned char minor1,
+                    unsigned char major2, unsigned char minor2);
+int isDefined2BitMode(unsigned short rx, EDID_Aspect a, unsigned char vr);
+
+#endif

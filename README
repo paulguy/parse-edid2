@@ -1,5 +1,5 @@
 Compiling it:
-type make, needs libi2c from i2c-tools.
+type make, needs libi2c from i2c-tools and probably linux-headers.
 
 Running it:
 USAGE: get-eedid [-s] [-d] [-o <output template>] <device path>
