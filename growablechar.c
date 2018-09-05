@@ -16,6 +16,7 @@ GrowableChar *GC_new() {
         return(NULL);
     }
 
+    gc->c = NULL;
     gc->len = 0;
     gc->mem = 0;
 
@@ -55,20 +56,24 @@ int GC_appendf(GrowableChar *gc, const char *format, ...) {
     va_end(ap);
 
     totalsize = gc->len + size;
+    if(gc->c == NULL) {
+        newsize = smallestPowerOf2(totalsize + 1); /* add null terminator */
+        gc->c = malloc(newsize);
+        if(gc->c == NULL) {
+            return(-ENOMEM);
+        }
+        gc->mem = newsize;
+        gc->len = 1; /* no null terminator yet */
+    }
     if(totalsize > gc->mem) {
         /* make sure a null terminator is accounted for before first append */
-        newsize = smallestPowerOf2(totalsize + (gc->len == 0 ? 1 : 0));
+        newsize = smallestPowerOf2(totalsize);
         temp = realloc(gc->c, newsize);
         if(temp == NULL) {
             return(-ENOMEM);
         }
         gc->c = temp;
         gc->mem = newsize;
-        /* null terminator is normally printed over, but if there's nothing yet,
-        it doesn't exist. */
-        if(gc->len == 0) {
-            gc->len = 1;
-        }
     }
 
     va_start(ap, format);
@@ -78,7 +83,7 @@ int GC_appendf(GrowableChar *gc, const char *format, ...) {
                      format, ap);
     va_end(ap);
 
-    gc->len += size;
+    gc->len += size;         
 
     return(size);
 }

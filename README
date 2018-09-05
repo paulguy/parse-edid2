@@ -1,5 +1,11 @@
 Compiling it:
-type make, needs libi2c from i2c-tools and probably linux-headers.
+get-eedid:
+type make -f Makefile.get-eedid
+Needs libi2c from i2c-tools and probably linux-headers.
+
+parse-edid:
+type make -f Makefile.parse-edid
+Shouldn't need anything special.
 
 Running it:
 USAGE: get-eedid [-s] [-d] [-o <output template>] <device path>
@@ -8,4 +14,6 @@ USAGE: get-eedid [-s] [-d] [-o <output template>] <device path>
 -o      Output template, in DDC2B mode '{}' will be replaced
     with the page number.  In SMBus mode, it'll just be omitted.
 <device path> Path to i2c device.
+
+USAGE: parse-edid <edid file>
 

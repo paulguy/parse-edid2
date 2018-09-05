@@ -111,35 +111,32 @@ typedef enum {
     DESCRIPTOR_NAME = 0xFC,
     DESCRIPTOR_LIMITS = 0xFD,
     DESCRIPTOR_TEXT = 0xFE,
-    DESCRIPTOR_SERIAL = 0xFF
-    DESCRIPTOR_UNKNOWN = 0x01;
+    DESCRIPTOR_SERIAL = 0xFF,
+    DESCRIPTOR_UNKNOWN = 0x01
 } EDID_DescriptorType;
 
 #define INTERLACED_BIT   (0x80)
-#define STEREO_BITS      (0x60)
-#define STEREO_EXTRA_BIT (0x01)
-#define STEREO_BITS_SHIFT (5)
+#define STEREO_BITS      (0x61)
 
 #define DIGITAL_SYNC_BIT (0x10)
 #define SYNC_TYPE_BIT    (0x08) /* analog: bipolar composite, digital: composite/separate */
 /* analog sync */
-#define DTD_SERRATED_VSYNC_BIT (0x04) /* digital separate sync too */
+#define DTD_SERRATED_SYNC_BIT (0x04) /* digital separate sync too */
 #define SYNC_ALL_LINES_BIT     (0x02)
 /* digital composite sync */
-#define VSYNC_POLARITY_BIT (0x04)
-#define DTD_RESERVED_BIT   (0x02)
+#define VSYNC_POLARITY_BIT (0x02)
 /* digital separate sync */
-#define HSYNC_POLARITY_BIT (0x02)
+#define HSYNC_POLARITY_BIT (0x04)
 
 typedef enum {
-    STEREO_NONE = 0x0, /* 00 0 */
-    STEREO_INVALID = 0x1, /* 00 1 */
-    STEREO_FIELD = 0x2, /* 01 0 */
-    STEREO_REVEN = 0x3, /* 01 1 */
-    STEREO_SIMILAR = 0x4, /* 10 0 */
-    STEREO_LEVEN = 0x5, /* 10 1 */
-    STEREO_4WAY = 0x6, /* 11 0 */
-    STEREO_SBS = 0x7 /* 11 1 */
+    STEREO_NONE = 0x00, /* 00 0 */
+    STEREO_INVALID = 0x01, /* 00 1 */
+    STEREO_FIELD = 0x20, /* 01 0 */
+    STEREO_REVEN = 0x21, /* 01 1 */
+    STEREO_FIELD_OPPOSITE = 0x40, /* 10 0 */
+    STEREO_LEVEN = 0x41, /* 10 1 */
+    STEREO_4WAY = 0x60, /* 11 0 */
+    STEREO_SBS = 0x61 /* 11 1 */
 } EDID_StereoMode;
 
 typedef struct {
@@ -151,8 +148,8 @@ typedef struct {
     unsigned short vBlanking;
     unsigned short hFrontPorch;
     unsigned short hSyncPulse;
-    unsigned short vFrontPorch;
-    unsigned short vSyncPulse;
+    unsigned char vFrontPorch;
+    unsigned char vSyncPulse;
     unsigned short width;
     unsigned short height;
     unsigned short hBorder;
@@ -164,7 +161,7 @@ typedef struct {
 #define NMODE_640_400_85    (0x400000000000)
 #define NMODE_720_400_85    (0x200000000000)
 #define NMODE_640_480_85    (0x100000000000)
-#define NMODE_640_480_60    (0x080000000000)
+#define NMODE_848_480_60    (0x080000000000)
 #define NMODE_800_600_85    (0x040000000000)
 #define NMODE_1024_768_85   (0x020000000000)
 #define NMODE_1152_864_85   (0x010000000000)
@@ -178,8 +175,8 @@ typedef struct {
 #define NMODE_1280_1024_60  (0x000200000000)
 #define NMODE_1280_1024_85  (0x000100000000)
 
-#define NMODE_1360_768_60R  (0x000080000000)
-#define NMODE_1360_768_60   (0x000040000000) /* maybe WikiP transcription error */
+#define NMODE_1366_768_60R  (0x000080000000)
+#define NMODE_1366_768_60   (0x000040000000) /* maybe WikiP transcription error */
 #define NMODE_1440_900_60R  (0x000020000000)
 #define NMODE_1440_900_75   (0x000010000000)
 #define NMODE_1440_900_85   (0x000008000000)
@@ -214,7 +211,7 @@ typedef struct {
 typedef struct {
     EDID_DescriptorType type;
     unsigned char version;
-    unsigned long long int modesBitmap;
+    unsigned long long int bitmap;
 } EDID_NewerModes;
 
 typedef enum {
@@ -224,6 +221,8 @@ typedef enum {
     PRATE_85 = 0x0C
 } EDID_PreferredRate;
 
+#define CVT_PREFERRED_RATE_BITS (0x0C)
+
 typedef enum {
     CVT_ASPECT_16_10 = 0x00,
     CVT_ASPECT_4_3 = 0x20,
@@ -231,11 +230,15 @@ typedef enum {
     CVT_ASPECT_16_9 = 0x60
 } EDID_CVTAspect;
 
+#define CVT_ASPECT_BITS (0x60)
+
 #define CVT_RATE_50  (0x10)
 #define CVT_RATE_60  (0x08)
 #define CVT_RATE_75  (0x04)
 #define CVT_RATE_85  (0x02)
 #define CVT_RATE_60R (0x01)
+
+#define CVT_RATES_BITS (0x1F)
 
 typedef struct {
     EDID_DescriptorType type;
@@ -262,18 +265,19 @@ typedef struct {
 typedef struct {
     EDID_DescriptorType type;
 
-    int resolutionsX[6];
+    unsigned short resolutionsX[6];
     EDID_Aspect aspects[6];
-    int vRefreshes[6];
+    unsigned char vRefreshes[6];
 } EDID_Timings;
 
 typedef struct {
     EDID_DescriptorType type;
-    
+
     unsigned char indices[2];
     unsigned short xes[2];
     unsigned short ys[2];
     unsigned char gammas[2];
+    unsigned char unused[3];
 } EDID_WhitePoints;
 
 typedef enum {
@@ -297,6 +301,10 @@ typedef enum {
     CVT_LIMIT_ASPECT_15_9 = 0x80
 } EDID_CVTLimitPrefAspect;
 
+#define CVT_PREF_ASPECT_BITS (0xE0)
+#define CVT_RB_BIT (0x10)
+#define CVT_STANDARD_BIT (0x80)
+
 #define CVT_SCALE_XSHRINK_BIT (0x80)
 #define CVT_SCALE_XGROW_BIT   (0x40)
 #define CVT_SCALE_YSHRINK_BIT (0x20)
@@ -304,17 +312,18 @@ typedef enum {
 
 typedef struct {
     EDID_DescriptorType type;
+
     unsigned short vMinRate;
     unsigned short vMaxRate;
     unsigned short hMinRate;
     unsigned short hMaxRate;
-    unsigned char pixelClock;
+    unsigned short pixelClock;
     EDID_ExtLimitsType extLimitsType;
 
     /* GTF, no idea, info costs money */
     unsigned char GTFStart;
     unsigned char GTFC;
-    unsigned char GTFM;
+    unsigned short GTFM;
     unsigned char GTFK;
     unsigned char GTFJ;
 
@@ -337,7 +346,7 @@ typedef struct {
 typedef struct {
     EDID_DescriptorType type;
     
-    char data[18]
+    char data[18];
 } EDID_Unknown;
 
 typedef union {
@@ -490,7 +499,7 @@ typedef struct {
 
 typedef struct {
     unsigned char header[5];
-    EDID_RawWhitePoint whitepoints[2];
+    EDID_RawWhitePoint whitePoints[2];
     unsigned char unused[3];
 } __attribute__((aligned(1), packed)) EDID_RawWhitePoints;
 
@@ -556,6 +565,11 @@ typedef struct {
     unsigned char checksum;
 } __attribute__((aligned(1), packed)) EDID_Raw;
 
+#define UNPACK_2BIT_TIMING(RESX, ASPECT, VREF, TIMING) \
+        (RESX) = ((TIMING).xres + 31) * 8; \
+        (ASPECT) = (TIMING).ar_vf & ASPECT_RATIO_BITS; \
+        (VREF) = ((TIMING).ar_vf & ~ASPECT_RATIO_BITS) + 60;
+
 void unpackManuID(unsigned char *manuID, const unsigned char *data);
 const char *inputTypeToStr(EDID_InputType i);
 const char *bitDepthToStr(EDID_BitDepth b);
@@ -565,6 +579,10 @@ const char *dTypeToStr(EDID_DigitalType t);
 const char *aTypeToStr(EDID_AnalogType t);
 int versionCompare(unsigned char major1, unsigned char minor1,
                     unsigned char major2, unsigned char minor2);
-int isDefined2BitMode(unsigned short rx, EDID_Aspect a, unsigned char vr);
-
+int isDefined2ByteMode(unsigned short rx, EDID_Aspect a, unsigned char vr);
+const char *stereoModeToStr(EDID_StereoMode s);
+const char *preferredRateToStr(EDID_PreferredRate r);
+const char *CVTAspectToStr(EDID_CVTAspect a);
+const char *extLimitsTypeToStr(EDID_ExtLimitsType t);
+const char *CVTLimitPrefAspectToStr(EDID_CVTLimitPrefAspect p);
 #endif

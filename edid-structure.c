@@ -58,6 +58,45 @@ const char *EDID_ANALOG_TYPES[4] = {
     "Undefined"
 };
 
+const char *EDID_STEREO_MODES[7] = {
+    "None",
+    "Field Sequential",
+    "Right Image On Even Lines",
+    "Opposite Field Sequential",
+    "Left Image On Even Lines",
+    "4-Way Interleaved",
+    "Side By Side"
+};
+
+const char *EDID_PREFERRED_RATES[4] = {
+    "50 Hz",
+    "60 Hz",
+    "75 Hz",
+    "85 Hz"
+};
+
+const char *EDID_CVT_ASPECTS[4] = {
+    "16:10",
+    "4:3",
+    "5:4",
+    "16:9"
+};
+
+const char *EDID_EXT_LIMIT_TYPES[4] = {
+    "Default GTF",
+    "No Timing Info",
+    "Secondary GTF",
+    "CVT"
+};
+
+const char *EDID_CVT_LIMIT_PREF_ASPECT[5] = {
+    "4:3",
+    "16:9",
+    "16:10",
+    "5:4",
+    "15:9"
+};
+
 void unpackManuID(unsigned char *manuID, const unsigned char *data) {
     manuID[0] = EDID_CONVTABLE[(data[0] & 0x7C) >> 2];
     manuID[1] = EDID_CONVTABLE[((data[0] & 0x03) << 3) | ((data[1] & 0xE0) >> 5)];
@@ -163,11 +202,89 @@ int versionCompare(unsigned char major1, unsigned char minor1,
     return(ver1 - ver2);
 }
 
-int isDefined2BitMode(unsigned short rx, EDID_Aspect a, unsigned char vr) {
+int isDefined2ByteMode(unsigned short rx, EDID_Aspect a, unsigned char vr) {
     /* 01 01 */
     if(rx == 256 && a == 0 && vr == 61) {
         return(0);
     }
 
     return(1);
+}
+
+const char *stereoModeToStr(EDID_StereoMode s) {
+    if(s == STEREO_NONE) {
+        return(EDID_STEREO_MODES[0]);
+    } else if( s == STEREO_FIELD) {
+        return(EDID_STEREO_MODES[1]);
+    } else if( s == STEREO_REVEN) {
+        return(EDID_STEREO_MODES[2]);
+    } else if( s == STEREO_FIELD_OPPOSITE) {
+        return(EDID_STEREO_MODES[3]);
+    } else if( s == STEREO_LEVEN) {
+        return(EDID_STEREO_MODES[4]);
+    } else if( s == STEREO_4WAY) {
+        return(EDID_STEREO_MODES[5]);
+    } else if( s == STEREO_SBS) {
+        return(EDID_STEREO_MODES[6]);
+    }
+
+    return(EDID_INVALID);
+}
+
+const char *preferredRateToStr(EDID_PreferredRate r) {
+    if(r == PRATE_50) {
+        return(EDID_PREFERRED_RATES[0]);
+    } else if(r == PRATE_60) {
+        return(EDID_PREFERRED_RATES[1]);
+    } else if(r == PRATE_75) {
+        return(EDID_PREFERRED_RATES[2]);
+    } else if(r == PRATE_85) {
+        return(EDID_PREFERRED_RATES[3]);
+    }
+
+    return(EDID_INVALID);
+}
+
+const char *CVTAspectToStr(EDID_CVTAspect a) {
+    if(a == CVT_ASPECT_16_10) {
+        return(EDID_CVT_ASPECTS[0]);
+    } else if(a == CVT_ASPECT_4_3) {
+        return(EDID_CVT_ASPECTS[1]);
+    } else if(a == CVT_ASPECT_5_4) {
+        return(EDID_CVT_ASPECTS[2]);
+    } else if(a == CVT_ASPECT_16_9) {
+        return(EDID_CVT_ASPECTS[3]);
+    }
+
+    return(EDID_INVALID);
+}
+
+const char *extLimitsTypeToStr(EDID_ExtLimitsType t) {
+    if (t == EXT_LIMITS_DEFAULT) {
+        return(EDID_EXT_LIMIT_TYPES[0]);
+    } else if(t == EXT_LIMITS_NONE) {
+        return(EDID_EXT_LIMIT_TYPES[1]);
+    } else if(t == EXT_LIMITS_GTF) {
+        return(EDID_EXT_LIMIT_TYPES[2]);
+    } else if(t == EXT_LIMITS_CVT) {
+        return(EDID_EXT_LIMIT_TYPES[3]);
+    }
+
+    return(EDID_INVALID);
+}
+
+const char *CVTLimitPrefAspectToStr(EDID_CVTLimitPrefAspect p) {
+    if(p == CVT_LIMIT_ASPECT_4_3) {
+        return(EDID_CVT_LIMIT_PREF_ASPECT[0]);
+    } else if(p == CVT_LIMIT_ASPECT_16_9) {
+        return(EDID_CVT_LIMIT_PREF_ASPECT[1]);
+    } else if(p == CVT_LIMIT_ASPECT_16_10) {
+        return(EDID_CVT_LIMIT_PREF_ASPECT[2]);
+    } else if(p == CVT_LIMIT_ASPECT_5_4) {
+        return(EDID_CVT_LIMIT_PREF_ASPECT[3]);
+    } else if(p == CVT_LIMIT_ASPECT_15_9) {
+        return(EDID_CVT_LIMIT_PREF_ASPECT[4]);
+    }
+
+    return(EDID_INVALID);
 }
