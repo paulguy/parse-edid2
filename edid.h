@@ -1,4 +1,4 @@
 #include "edid-structure.h"
 
-EDID *unpackEDID(unsigned char *data);
+EDID *unpackEDID(FILE *in);
 char *parseEDID(EDID *edid);

@@ -1,17 +1,56 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "edid-structure.h"
 #include "growablechar.h"
 
-EDID *unpackEDID(unsigned char *data) {
-    EDID_Raw *raw = (EDID_Raw *)data;
+#define READ_ARRAY(FILEH, PTR, SIZE) \
+    if(fread(PTR, 1, SIZE, FILEH) < SIZE) { \
+        fprintf(stderr, "Failed to read " #SIZE " bytes: %s\n", strerror(errno)); \
+        return(NULL); \
+    }
+
+#define READ_CHAR(FILEH, PTR) \
+    READ_ARRAY(FILEH, &(PTR), 1)
+
+#define READ_SHORT(FILEH, PTR) \
+    READ_ARRAY(FILEH, &(PTR), 2)
+
+#define READ_INT(FILEH, PTR) \
+    READ_ARRAY(FILEH, &(PTR), 4)
+
+#define SKIPOVER(FILEH, AMOUNT) \
+    if(fseek(FILEH, AMOUNT, SEEK_CUR) < 0) { \
+        fprintf(stderr, "Failed to seek " #AMOUNT " bytes: %s\n", strerror(errno)); \
+        return(NULL); \
+    }
+
+EDID *unpackEDID(FILE *in) {
     EDID *edid;
-    EDID_RawDescriptor *d;
+    int edidsize;
+    unsigned char tbuf[128];
+    unsigned short tshort;
     int i, j;
 
-    if(memcmp(raw->magic, EDID_MAGIC, sizeof(EDID_MAGIC)) != 0) {
+    if(fseek(in, 0, SEEK_END) < 0) {
+        fprintf(stderr, "Failed to seek: %s\n", strerror(errno));
+        return(NULL);
+    }
+    edidsize = ftell(in);
+    if(edidsize < 0) {
+        fprintf(stderr, "Failed to get size: %s\n", strerror(errno));
+        return(NULL);
+    }
+    if(edidsize < 128) {
+        fprintf(stderr, "EDID must be at least 128 bytes.\n");
+        return(NULL);
+    }
+    rewind(in);
+
+    READ_ARRAY(in, tbuf, 8)
+    if(memcmp(tbuf, EDID_MAGIC, sizeof(EDID_MAGIC)) != 0) {
         fprintf(stderr, "Invalid magic.\n");
         return(NULL);
     }
@@ -22,235 +61,253 @@ EDID *unpackEDID(unsigned char *data) {
         return(NULL);
     }
 
-    unpackManuID(edid->manuID, raw->manuID);
+    READ_ARRAY(in, tbuf, 2)
+    unpackManuID(edid->manuID, tbuf);
 
-    edid->productCode = raw->productCode;
-    edid->serial = raw->serial;
-    edid->week = raw->week;
-    edid->year = (unsigned short)(raw->year) + 1990;
-    edid->verMajor = raw->verMajor;
-    edid->verMinor = raw->verMinor;
+    READ_SHORT(in, edid->productCode)
+    READ_INT(in, edid->serial)
+    READ_CHAR(in, edid->week)
+    READ_CHAR(in, tbuf[0])
+    edid->year = (unsigned short)tbuf[0] + 1990;
+    READ_CHAR(in, edid->verMajor)
+    READ_CHAR(in, edid->verMinor)
 
-    edid->inputType = raw->attribs & INPUTTYPE_BITS;
+    READ_CHAR(in, tbuf[0])
+    edid->inputType = tbuf[0] & INPUTTYPE_BITS;
     if(edid->inputType == INPUT_DIGITAL) {
-        edid->bitDepth = raw->attribs & BITDEPTH_BITS;
-        edid->interface = raw->attribs & INTERFACE_BITS;
+        edid->bitDepth = tbuf[0] & BITDEPTH_BITS;
+        edid->interface = tbuf[0] & INTERFACE_BITS;
     } else { /* analog */
-        edid->levels = raw->attribs & LEVELS_BITS;
-        edid->attribs = raw->attribs & ~LEVELS_BITS;
+        edid->levels = tbuf[0] & LEVELS_BITS;
+        edid->attribs = tbuf[0] & ~LEVELS_BITS;
     }
-    
-    edid->width = raw->width;
-    edid->height = raw->height;
-    edid->gamma = raw->gamma;
-    edid->features = raw->features & ~DISPLAY_TYPE_BITS;
+
+    READ_CHAR(in, edid->width)
+    READ_CHAR(in, edid->height)
+    READ_CHAR(in, edid->gamma)
+    READ_CHAR(in, tbuf[0])
+
+    edid->features = tbuf[0] & ~DISPLAY_TYPE_BITS;
     if(edid->inputType == INPUT_DIGITAL) {
-        edid->dType = raw->features & DISPLAY_TYPE_BITS;
+        edid->dType = tbuf[0] & DISPLAY_TYPE_BITS;
     } else {
-        edid->aType = raw->features & DISPLAY_TYPE_BITS;
+        edid->aType = tbuf[0] & DISPLAY_TYPE_BITS;
     }
 
     /* chromaticity coordinates */
-    edid->whitePointX = ((raw->bw_lsb & 0x0C) >> 2) |
-                        ((unsigned short)raw->whitex_msb << 2);
-    edid->whitePointY = (raw->bw_lsb & 0x03) |
-                        ((unsigned short)raw->whitey_msb << 2);
-    edid->redPointX = ((raw->rg_lsb & 0xC0) >> 6) |
-                      ((unsigned short)raw->redx_msb << 2);
-    edid->redPointY = ((raw->rg_lsb & 0x30) >> 4) |
-                      ((unsigned short)raw->redy_msb << 2);
-    edid->greenPointX = ((raw->rg_lsb & 0x0C) >> 2) |
-                        ((unsigned short)raw->greenx_msb << 2);
-    edid->greenPointY = (raw->rg_lsb & 0x03) |
-                        ((unsigned short)raw->greeny_msb << 2);
-    edid->bluePointX = ((raw->bw_lsb & 0xC0) >> 6) |
-                       ((unsigned short)raw->bluex_msb << 2);
-    edid->bluePointY = ((raw->bw_lsb & 0x30) >> 4) |
-                       ((unsigned short)raw->bluey_msb << 2);
+    READ_ARRAY(in, tbuf, 2)
+    READ_CHAR(in, edid->redPointX)
+    READ_CHAR(in, edid->redPointY)
+    READ_CHAR(in, edid->greenPointX)
+    READ_CHAR(in, edid->greenPointY)
+    READ_CHAR(in, edid->bluePointX)
+    READ_CHAR(in, edid->bluePointY)
+    READ_CHAR(in, edid->whitePointX)
+    READ_CHAR(in, edid->whitePointY)
 
-    edid->oldModes = ((unsigned int)(raw->timingsBitmap[0]) << 16) |
-                     ((unsigned int)(raw->timingsBitmap[1]) << 8) |
-                     (unsigned int)(raw->timingsBitmap[2]);
+    edid->redPointX = ((tbuf[0] & 0xC0) >> 6) | (edid->redPointX << 2);
+    edid->redPointY = ((tbuf[0] & 0x30) >> 4) | (edid->redPointY << 2);
+    edid->greenPointX = ((tbuf[0] & 0x0C) >> 2) | (edid->greenPointX << 2);
+    edid->greenPointY = (tbuf[0] & 0x03) | (edid->greenPointY << 2);
+    edid->bluePointX = ((tbuf[1] & 0xC0) >> 6) | (edid->bluePointX << 2);
+    edid->bluePointY = ((tbuf[1] & 0x30) >> 4) | (edid->bluePointY << 2);
+    edid->whitePointX = ((tbuf[1] & 0x0C) >> 2) | (edid->whitePointX << 2);
+    edid->whitePointY = (tbuf[1] & 0x03) | (edid->whitePointY << 2);
+
+    READ_ARRAY(in, tbuf, 3)
+    edid->oldModes = ((unsigned int)(tbuf[0]) << 16) |
+                     ((unsigned int)(tbuf[1]) << 8) |
+                     (unsigned int)(tbuf[2]);
 
     /* standard timing information */
     for(i = 0; i < 8; i++) {
+        READ_ARRAY(in, tbuf, 2)
         UNPACK_2BIT_TIMING(edid->resolutionsX[i],
                            edid->aspects[i],
                            edid->vRefreshes[i],
-                           raw->timings[i])
+                           tbuf)
     }
 
     for(i = 0; i < 4; i++) {
-        d = (EDID_RawDescriptor *)raw->descs[i];
-        if(d->DTDOrOther == 0) { /* other */
-            if(d->type == DESCRIPTOR_NEWER_MODES) {
-                EDID_RawNewerModes *rNewerModes = (EDID_RawNewerModes *)raw->descs[i];
+        READ_SHORT(in, tshort)
+        if(tshort == 0) { /* other */
+            SKIPOVER(in, 1)
+            READ_CHAR(in, tbuf[0])
+            if(tbuf[0] == DESCRIPTOR_NEWER_MODES) {
                 EDID_NewerModes *newerModes = &(edid->descriptors[i].newerModes);
                 newerModes->type = DESCRIPTOR_NEWER_MODES;
 
-                newerModes->version = rNewerModes->version;
-                newerModes->bitmap = (unsigned long long int)rNewerModes->bitmaps[5] |
-                    ((unsigned long long int)rNewerModes->bitmaps[4] << 8) |
-                    ((unsigned long long int)rNewerModes->bitmaps[3] << 16) |
-                    ((unsigned long long int)rNewerModes->bitmaps[2] << 24) |
-                    ((unsigned long long int)rNewerModes->bitmaps[1] << 32) |
-                    ((unsigned long long int)rNewerModes->bitmaps[0] << 40);
-            } else if(d->type == DESCRIPTOR_CVT) {
-                EDID_RawCVT *rCVT = (EDID_RawCVT *)raw->descs[i];
+                SKIPOVER(in, 1)
+                READ_CHAR(in, newerModes->version)
+                READ_ARRAY(in, tbuf, 6)
+                newerModes->bitmap = (unsigned long long int)tbuf[0] |
+                    ((unsigned long long int)tbuf[1] << 8) |
+                    ((unsigned long long int)tbuf[2] << 16) |
+                    ((unsigned long long int)tbuf[3] << 24) |
+                    ((unsigned long long int)tbuf[4] << 32) |
+                    ((unsigned long long int)tbuf[5] << 40);
+                READ_ARRAY(in, newerModes->unused, sizeof(newerModes->unused))
+            } else if(tbuf[0] == DESCRIPTOR_CVT) {
                 EDID_CVT *CVT = &(edid->descriptors[i].CVT);
                 CVT->type = DESCRIPTOR_CVT;
 
-                CVT->version = rCVT->version;
+                SKIPOVER(in, 1)
+                READ_CHAR(in, CVT->version)
                 for(j = 0; j < 4; j++) {
-                    CVT->addressableLines[j] = rCVT->timings[j].addrLines_lsb | 
-                        ((unsigned short)(rCVT->timings[j].lines_msb_pvr & 0xF0) << 4);
-                    CVT->preferredRate[j] = rCVT->timings[j].lines_msb_pvr &
+                    READ_ARRAY(in, tbuf, 3)
+                    CVT->addressableLines[j] = tbuf[0] | 
+                        ((unsigned short)(tbuf[1] & 0xF0) << 4);
+                    CVT->preferredRate[j] = tbuf[1] &
                         CVT_PREFERRED_RATE_BITS;
-                    CVT->aspects[j] = rCVT->timings[j].ar_vr & CVT_ASPECT_BITS;
-                    CVT->rates[j] = rCVT->timings[j].ar_vr & CVT_RATES_BITS;
+                    CVT->aspects[j] = tbuf[2] & CVT_ASPECT_BITS;
+                    CVT->rates[j] = tbuf[3] & CVT_RATES_BITS;
                 }
-            } else if(d->type == DESCRIPTOR_DCM) {
-                EDID_RawDCM *rDCM = (EDID_RawDCM *)raw->descs[i];
+            } else if(tbuf[0] == DESCRIPTOR_DCM) {
                 EDID_DCM *DCM = &(edid->descriptors[i].DCM);
                 DCM->type = DESCRIPTOR_DCM;
 
-                DCM->version = rDCM->version;
-                DCM->redA3 = rDCM->redA3_lsb |
-                    ((unsigned short)rDCM->redA3_msb << 8);
-                DCM->redA2 = rDCM->redA2_lsb |
-                    ((unsigned short)rDCM->redA2_msb << 8);
-                DCM->greenA3 = rDCM->greenA3_lsb |
-                    ((unsigned short)rDCM->greenA3_msb << 8);
-                DCM->greenA2 = rDCM->greenA2_lsb |
-                    ((unsigned short)rDCM->greenA2_msb << 8);
-                DCM->blueA3 = rDCM->blueA3_lsb |
-                    ((unsigned short)rDCM->blueA3_msb << 8);
-                DCM->blueA2 = rDCM->blueA2_lsb |
-                    ((unsigned short)rDCM->blueA2_msb << 8);
-            } else if(d->type == DESCRIPTOR_TIMINGS) {
-                EDID_RawTimings *rTimings = (EDID_RawTimings *)raw->descs[i];
+                SKIPOVER(in, 1)
+                READ_CHAR(in, DCM->version)
+                READ_ARRAY(in, tbuf, 12)
+                DCM->redA3 = tbuf[0] | ((unsigned short)tbuf[1] << 8);
+                DCM->redA2 = tbuf[2] | ((unsigned short)tbuf[3] << 8);
+                DCM->greenA3 = tbuf[4] | ((unsigned short)tbuf[5] << 8);
+                DCM->greenA2 = tbuf[6] | ((unsigned short)tbuf[7] << 8);
+                DCM->blueA3 = tbuf[8] | ((unsigned short)tbuf[9] << 8);
+                DCM->blueA2 = tbuf[10] | ((unsigned short)tbuf[11] << 8);
+            } else if(tbuf[0] == DESCRIPTOR_TIMINGS) {
                 EDID_Timings *timings = &(edid->descriptors[i].timings);
                 timings->type = DESCRIPTOR_TIMINGS;
 
+                SKIPOVER(in, 1)
                 for(j = 0; j < 6; j++) {
+                    READ_ARRAY(in, tbuf, 2)
                     UNPACK_2BIT_TIMING(timings->resolutionsX[j],
                                        timings->aspects[j],
                                        timings->vRefreshes[j],
-                                       rTimings->timings[j])
+                                       tbuf)
                 }
-            } else if(d->type == DESCRIPTOR_WHITEP) {
-                EDID_RawWhitePoints *rWhitePoints = (EDID_RawWhitePoints *)raw->descs[i];
+                SKIPOVER(in, 1)
+            } else if(tbuf[0] == DESCRIPTOR_WHITEP) {
                 EDID_WhitePoints *whitePoints = &(edid->descriptors[i].whitePoints);
                 whitePoints->type = DESCRIPTOR_WHITEP;
 
+                SKIPOVER(in, 1)
                 for(j = 0; j < 2; j++) {
-                    whitePoints->indices[j] = rWhitePoints->whitePoints[j].index;
+                    READ_ARRAY(in, tbuf, 5)
+                    whitePoints->indices[j] = tbuf[0];
                     whitePoints->xes[j] = 
-                        ((rWhitePoints->whitePoints[j].lsb & 0x0C) >> 2) |
-                        ((unsigned short)rWhitePoints->whitePoints[j].x_msb << 2);
+                        ((tbuf[1] & 0x0C) >> 2) | ((unsigned short)tbuf[2] << 2);
                     whitePoints->ys[j] = 
-                        (rWhitePoints->whitePoints[j].lsb & 0x03) |
-                        ((unsigned short)rWhitePoints->whitePoints[j].y_msb << 2);
-                    whitePoints->gammas[j] = rWhitePoints->whitePoints[j].gamma;
+                        (tbuf[1] & 0x03) | ((unsigned short)tbuf[3] << 2);
+                    whitePoints->gammas[j] = tbuf[4];
                 }
-                memcpy(whitePoints->unused,
-                       rWhitePoints->unused,
-                       sizeof(whitePoints->unused));
-            } else if(d->type == DESCRIPTOR_NAME) {
+                READ_ARRAY(in, whitePoints->unused, sizeof(whitePoints->unused))
+            } else if(tbuf[0] == DESCRIPTOR_NAME) {
                 EDID_Text *text = &(edid->descriptors[i].text);
                 text->type = DESCRIPTOR_NAME;
 
-                memcpy(text->text, d->text, sizeof(text->text));
-            } else if(d->type == DESCRIPTOR_LIMITS) {
-                EDID_RawRangeLimits *rRangeLimits = (EDID_RawRangeLimits *)raw->descs[i];
+                SKIPOVER(in, 1)
+                READ_ARRAY(in, text->text, sizeof(text->text))
+            } else if(tbuf[0] == DESCRIPTOR_LIMITS) {
                 EDID_RangeLimits *rangeLimits = &(edid->descriptors[i].rangeLimits);
                 rangeLimits->type = DESCRIPTOR_LIMITS;
 
-                rangeLimits->vMinRate = rRangeLimits->minvfr_lsb |
-                    ((unsigned short)(rRangeLimits->msb & 0x1) << 8);
-                rangeLimits->vMaxRate = rRangeLimits->maxvfr_lsb |
-                    ((unsigned short)(rRangeLimits->msb & 0x2) << 7);
-                rangeLimits->hMinRate = rRangeLimits->minhlr_lsb |
-                    ((unsigned short)(rRangeLimits->msb & 0x4) << 6);
-                rangeLimits->hMaxRate = rRangeLimits->maxhlr_lsb |
-                    ((unsigned short)(rRangeLimits->msb & 0x8) << 5);
-                rangeLimits->pixelClock = rRangeLimits->clock * 10;
+                READ_ARRAY(in, tbuf, 6)
+                rangeLimits->vMinRate = tbuf[1] |
+                    ((unsigned short)(tbuf[0] & 0x1) << 8);
+                rangeLimits->vMaxRate = tbuf[2] |
+                    ((unsigned short)(tbuf[0] & 0x2) << 7);
+                rangeLimits->hMinRate = tbuf[3] |
+                    ((unsigned short)(tbuf[0] & 0x4) << 6);
+                rangeLimits->hMaxRate = tbuf[4] |
+                    ((unsigned short)(tbuf[0] & 0x8) << 5);
+                rangeLimits->pixelClock = (unsigned short)tbuf[5] * 10;
 
-                rangeLimits->extLimitsType = rRangeLimits->infoType;
+                READ_CHAR(in, rangeLimits->extLimitsType)
                 if(rangeLimits->extLimitsType == EXT_LIMITS_GTF) {
-                    EDID_RawGTFLimits *rGTFL = (EDID_RawGTFLimits *)rRangeLimits->info;
-
-                    rangeLimits->GTFStart = rGTFL->startFreq;
-                    rangeLimits->GTFC = rGTFL->c;
-                    rangeLimits->GTFM = rGTFL->m;
-                    rangeLimits->GTFK = rGTFL->k;
-                    rangeLimits->GTFJ = rGTFL->j;
+                    SKIPOVER(in, 1)
+                    READ_CHAR(in, rangeLimits->GTFStart)
+                    READ_CHAR(in, rangeLimits->GTFC)
+                    READ_SHORT(in, rangeLimits->GTFM)
+                    READ_CHAR(in, rangeLimits->GTFK)
+                    READ_CHAR(in, rangeLimits->GTFJ)
                 } else if(rangeLimits->extLimitsType == EXT_LIMITS_CVT) {
-                    EDID_RawCVTLimits *rCVTL = (EDID_RawCVTLimits *)rRangeLimits->info;
-    /* CVT */
-                    rangeLimits->CVTVersion = rCVTL->version;
-                    rangeLimits->CVTExtraPrecision = (rCVTL->clock_active_msb & 0xFC) >> 2;
-                    rangeLimits->CVTMaxWidth = rCVTL->active_lsb | 
-                        ((unsigned short)(rCVTL->clock_active_msb & 0x03) << 8);
-                    rangeLimits->CVTAspects = rCVTL->ar_bitmap;
-                    rangeLimits->CVTPrefs = rCVTL->ar_rb_prefs;
-                    rangeLimits->CVTScaling = rCVTL->scaling;
-                    rangeLimits->CVTPrefRefresh = rCVTL->prefVFR;
+                    READ_CHAR(in, rangeLimits->CVTVersion)
+                    READ_ARRAY(in, tbuf, 2)
+                    rangeLimits->CVTExtraPrecision = (tbuf[0] & 0xFC) >> 2;
+                    rangeLimits->CVTMaxWidth = tbuf[1] | 
+                        ((unsigned short)(tbuf[0] & 0x03) << 8);
+                    READ_CHAR(in, rangeLimits->CVTAspects)
+                    READ_CHAR(in, rangeLimits->CVTPrefs)
+                    READ_CHAR(in, rangeLimits->CVTScaling)
+                    READ_CHAR(in, rangeLimits->CVTPrefRefresh)
+                } else {
+                    SKIPOVER(in, 7)
                 }
-            } else if(d->type == DESCRIPTOR_TEXT) {
+            } else if(tbuf[0] == DESCRIPTOR_TEXT) {
                 EDID_Text *text = &(edid->descriptors[i].text);
                 text->type = DESCRIPTOR_TEXT;
 
-                memcpy(text->text, d->text, sizeof(text->text));
-            } else if(d->type == DESCRIPTOR_SERIAL) {
+                SKIPOVER(in, 1)
+                READ_ARRAY(in, text->text, sizeof(text->text))
+            } else if(tbuf[0] == DESCRIPTOR_SERIAL) {
                 EDID_Text *text = &(edid->descriptors[i].text);
                 text->type = DESCRIPTOR_SERIAL;
 
-                memcpy(text->text, d->text, sizeof(text->text));
+                SKIPOVER(in, 1)
+                READ_ARRAY(in, text->text, sizeof(text->text))
             } else {
                 EDID_Unknown *unknown = &(edid->descriptors[i].unknown);
                 unknown->type = DESCRIPTOR_UNKNOWN;
 
-                memcpy(unknown->data, d, sizeof(unknown->data));
+                SKIPOVER(in, -4)
+                READ_ARRAY(in, unknown->data, sizeof(unknown->data))
             }
         } else { /* DTD */
-            EDID_RawDTD *rDTD = (EDID_RawDTD *)raw->descs[i];
             EDID_DTD *DTD = &(edid->descriptors[i].DTD);
             DTD->type = DESCRIPTOR_DTD;
 
-            DTD->clock = rDTD->clock;
-            DTD->hActive = ((unsigned short)(rDTD->hActiveBlank_msb & 0xF0) << 4) |
-                           (unsigned short)(rDTD->hActive_lsb);
-            DTD->hBlanking = ((unsigned short)(rDTD->hActiveBlank_msb & 0x0F) << 8) |
-                             (unsigned short)(rDTD->hBlank_lsb);
-            DTD->vActive = ((unsigned short)(rDTD->vActiveBlank_msb & 0xF0) << 4) |
-                           (unsigned short)(rDTD->vActive_lsb);
-            DTD->vBlanking = ((unsigned short)(rDTD->vActiveBlank_msb & 0x0F) << 8) |
-                             (unsigned short)(rDTD->vBlank_lsb);
-            DTD->hFrontPorch = ((unsigned short)(rDTD->frontSync_msb & 0xC0) << 2) |
-                               (unsigned short)(rDTD->hFrontPorch_lsb);
-            DTD->hSyncPulse = ((unsigned short)(rDTD->frontSync_msb & 0x30) << 4) |
-                              (unsigned short)(rDTD->hSyncPulse_lsb);
-            DTD->vFrontPorch = (rDTD->frontSync_msb & 0x0C << 2) |
-                               (rDTD->vFrontSync_lsb & 0xF0 >> 4);
-            DTD->vSyncPulse = (rDTD->frontSync_msb & 0x03 << 4) |
-                              (rDTD->vFrontSync_lsb & 0x0F);
-            DTD->width = ((unsigned short)(rDTD->size_msb & 0xF0) << 4) |
-                         (unsigned short)(rDTD->width_lsb);
-            DTD->height = ((unsigned short)(rDTD->size_msb & 0x0F) << 8) |
-                          (unsigned short)(rDTD->height_lsb);
-            DTD->hBorder = rDTD->hBorder;
-            DTD->vBorder = rDTD->vBorder;
-            DTD->features = rDTD->features;
+            DTD->clock = tshort;
+            READ_ARRAY(in, tbuf, 3)
+            DTD->hActive = ((unsigned short)(tbuf[2] & 0xF0) << 4) |
+                           (unsigned short)(tbuf[0]);
+            DTD->hBlanking = ((unsigned short)(tbuf[2] & 0x0F) << 8) |
+                             (unsigned short)(tbuf[1]);
+            READ_ARRAY(in, tbuf, 3)
+            DTD->vActive = ((unsigned short)(tbuf[2] & 0xF0) << 4) |
+                           (unsigned short)(tbuf[0]);
+            DTD->vBlanking = ((unsigned short)(tbuf[2] & 0x0F) << 8) |
+                             (unsigned short)(tbuf[1]);
+            READ_ARRAY(in, tbuf, 4)
+            DTD->hFrontPorch = ((unsigned short)(tbuf[3] & 0xC0) << 2) |
+                               (unsigned short)(tbuf[0]);
+            DTD->hSyncPulse = ((unsigned short)(tbuf[3] & 0x30) << 4) |
+                              (unsigned short)(tbuf[1]);
+            DTD->vFrontPorch = (tbuf[2] & 0x0C << 2) |
+                               (tbuf[3] & 0xF0 >> 4);
+            DTD->vSyncPulse = (tbuf[2] & 0x03 << 4) |
+                              (tbuf[3] & 0x0F);
+            READ_ARRAY(in, tbuf, 3)
+            DTD->width = ((unsigned short)(tbuf[2] & 0xF0) << 4) |
+                         (unsigned short)(tbuf[1]);
+            DTD->height = ((unsigned short)(tbuf[2] & 0x0F) << 8) |
+                          (unsigned short)(tbuf[1]);
+            READ_CHAR(in, DTD->hBorder)
+            READ_CHAR(in, DTD->vBorder)
+            READ_CHAR(in, DTD->features)
         }
     }
 
-    edid->extensions = raw->extensions;
-    edid->checksum = raw->checksum;
+    READ_CHAR(in, edid->extensions)
+    READ_CHAR(in, edid->checksum)
+
+    rewind(in);
+    READ_ARRAY(in, tbuf, 128)
 
     edid->checksumBad = 0;
     for(i = 0; i < 128; i++) {
-        edid->checksumBad += (unsigned int)(data[i]);
+        edid->checksumBad += (unsigned int)(tbuf[i]);
     }
     edid->checksumBad &= 0xFF;
 
@@ -642,7 +699,12 @@ char *parseEDID(EDID *edid) {
                 APPEND_STRF("CVT Extra Clock Precision: Maximum Pixel Clock Rate - %hhu.%hhu\n",
                     rangeLimits->CVTExtraPrecision / 4,
                     rangeLimits->CVTExtraPrecision % 4 * 25)
-                APPEND_STRF("Maximum Active Pixels Per Line: %hu\n", rangeLimits->CVTMaxWidth)
+                APPEND_STR("Maximum Active Pixels Per Line: ")
+                if(rangeLimits->CVTMaxWidth == 0) {
+                    APPEND_STR("No Limit\n")
+                } else {
+                    APPEND_STRF("%hu\n", rangeLimits->CVTMaxWidth)
+                }
                 ADD_YES_OR_NO("Aspect 4:3 Support: ",
                     rangeLimits->CVTAspects & CVT_ASPECT_4_3_BIT)
                 ADD_YES_OR_NO("Aspect 16:9 Support: ",
@@ -684,6 +746,7 @@ char *parseEDID(EDID *edid) {
         default: ; /* Unknown */
             EDID_Unknown *unknown = &(edid->descriptors[i].unknown);
 
+            APPEND_STRF("%i: Unknown\n", i)
             APPEND_HEX(unknown->data, sizeof(unknown->data))
         }
     }

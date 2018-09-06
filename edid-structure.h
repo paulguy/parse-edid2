@@ -212,6 +212,7 @@ typedef struct {
     EDID_DescriptorType type;
     unsigned char version;
     unsigned long long int bitmap;
+    char unused[6];
 } EDID_NewerModes;
 
 typedef enum {
@@ -242,8 +243,8 @@ typedef enum {
 
 typedef struct {
     EDID_DescriptorType type;
-    unsigned char version;
 
+    unsigned char version;
     unsigned short addressableLines[4];
     EDID_PreferredRate preferredRate[4];
     EDID_CVTAspect aspects[4];
@@ -340,13 +341,13 @@ typedef struct {
 typedef struct {
     EDID_DescriptorType type;
 
-    char text[13];
+    unsigned char text[13];
 } EDID_Text;
 
 typedef struct {
     EDID_DescriptorType type;
     
-    char data[18];
+    unsigned char data[18];
 } EDID_Unknown;
 
 typedef union {
@@ -414,161 +415,10 @@ typedef struct { /* represents interpreted data, not literal structure */
     unsigned int checksumBad;
 } EDID;
 
-typedef struct {
-    unsigned char xres;
-    unsigned char ar_vf;
-} __attribute__((aligned(1), packed)) EDID_RawTiming;
-
-typedef struct {
-    unsigned short DTDOrOther;
-    unsigned char zero1;
-    unsigned char type;
-    unsigned char zero2;
-    unsigned char text[13];
-} __attribute__((aligned(1), packed)) EDID_RawDescriptor;
-
-typedef struct {
-    unsigned short clock;
-    unsigned char hActive_lsb;
-    unsigned char hBlank_lsb;
-    unsigned char hActiveBlank_msb;
-    unsigned char vActive_lsb;
-    unsigned char vBlank_lsb;
-    unsigned char vActiveBlank_msb;
-    unsigned char hFrontPorch_lsb;
-    unsigned char hSyncPulse_lsb;
-    unsigned char vFrontSync_lsb;
-    unsigned char frontSync_msb;
-    unsigned char width_lsb;
-    unsigned char height_lsb;
-    unsigned char size_msb;
-    unsigned char hBorder;
-    unsigned char vBorder;
-    unsigned char features;
-} __attribute__((aligned(1), packed)) EDID_RawDTD;
-
-typedef struct {
-    unsigned char header[5];
-    unsigned char version;
-    unsigned char bitmaps[6];
-    unsigned char unused[6];
-} __attribute__((aligned(1), packed)) EDID_RawNewerModes;
-
-typedef struct {
-    unsigned char addrLines_lsb;
-    unsigned char lines_msb_pvr;
-    unsigned char ar_vr;
-} __attribute__((aligned(1), packed)) EDID_RawCVTTiming;
-
-typedef struct {
-    unsigned char header[5];
-    unsigned char version;
-    EDID_RawCVTTiming timings[4];
-} __attribute__((aligned(1), packed)) EDID_RawCVT;
-
-typedef struct {
-    unsigned char header[5];
-    unsigned char version;
-    unsigned char redA3_lsb;
-    unsigned char redA3_msb;
-    unsigned char redA2_lsb;
-    unsigned char redA2_msb;
-    unsigned char greenA3_lsb;
-    unsigned char greenA3_msb;
-    unsigned char greenA2_lsb;
-    unsigned char greenA2_msb;
-    unsigned char blueA3_lsb;
-    unsigned char blueA3_msb;
-    unsigned char blueA2_lsb;
-    unsigned char blueA2_msb;
-} __attribute__((aligned(1), packed)) EDID_RawDCM;
-
-typedef struct {
-    unsigned char header[5];
-    EDID_RawTiming timings[6];
-    unsigned char unused;
-} __attribute__((aligned(1), packed)) EDID_RawTimings;
-
-typedef struct {
-    unsigned char index;
-    unsigned char lsb;
-    unsigned char x_msb;
-    unsigned char y_msb;
-    unsigned char gamma;
-} __attribute__((aligned(1), packed)) EDID_RawWhitePoint;
-
-typedef struct {
-    unsigned char header[5];
-    EDID_RawWhitePoint whitePoints[2];
-    unsigned char unused[3];
-} __attribute__((aligned(1), packed)) EDID_RawWhitePoints;
-
-typedef struct {
-    unsigned char reserved;
-    unsigned char startFreq;
-    unsigned char c;
-    unsigned short m;
-    unsigned char k;
-    unsigned char j;
-} __attribute__((aligned(1), packed)) EDID_RawGTFLimits;
-
-typedef struct {
-    unsigned char version;
-    unsigned char clock_active_msb;
-    unsigned char active_lsb;
-    unsigned char ar_bitmap;
-    unsigned char ar_rb_prefs;
-    unsigned char scaling;
-    unsigned char prefVFR;
-} __attribute__((aligned(1), packed)) EDID_RawCVTLimits;
-
-typedef struct {
-    unsigned char header[4];
-    unsigned char msb;
-    unsigned char minvfr_lsb;
-    unsigned char maxvfr_lsb;
-    unsigned char minhlr_lsb;
-    unsigned char maxhlr_lsb;
-    unsigned char clock;
-    unsigned char infoType;
-    unsigned char info[7];
-} __attribute__((aligned(1), packed)) EDID_RawRangeLimits;
-
-typedef struct {
-    unsigned char magic[8];
-    unsigned char manuID[2];
-    unsigned short productCode;
-    unsigned int serial;
-    unsigned char week;
-    unsigned char year;
-    unsigned char verMajor;
-    unsigned char verMinor;
-    unsigned char attribs;
-    unsigned char width;
-    unsigned char height;
-    unsigned char gamma;
-    unsigned char features;
-    unsigned char rg_lsb;
-    unsigned char bw_lsb;
-    unsigned char redx_msb;
-    unsigned char redy_msb;
-    unsigned char greenx_msb;
-    unsigned char greeny_msb;
-    unsigned char bluex_msb;
-    unsigned char bluey_msb;
-    unsigned char whitex_msb;
-    unsigned char whitey_msb;
-    unsigned char timingsBitmap[3];
-    EDID_RawTiming timings[8];
-    unsigned char descs[4][18];
-    unsigned char extensions;
-    unsigned char checksum;
-} __attribute__((aligned(1), packed)) EDID_Raw;
-
 #define UNPACK_2BIT_TIMING(RESX, ASPECT, VREF, TIMING) \
-        (RESX) = ((TIMING).xres + 31) * 8; \
-        (ASPECT) = (TIMING).ar_vf & ASPECT_RATIO_BITS; \
-        (VREF) = ((TIMING).ar_vf & ~ASPECT_RATIO_BITS) + 60;
+        (RESX) = ((TIMING)[0] + 31) * 8; \
+        (ASPECT) = (TIMING)[1] & ASPECT_RATIO_BITS; \
+        (VREF) = ((TIMING)[1] & ~ASPECT_RATIO_BITS) + 60;
 
 void unpackManuID(unsigned char *manuID, const unsigned char *data);
 const char *inputTypeToStr(EDID_InputType i);
