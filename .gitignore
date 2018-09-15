@@ -3,3 +3,5 @@ parse-edid
 *.o
 *.bin
 test*
+kaitai-struct-compiler-*
+__pycache__/
