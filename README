@@ -3,7 +3,7 @@ get-eedid:
 type make -f Makefile.get-eedid
 Needs libi2c from i2c-tools and probably linux-headers.
 
-parse-edid:
+parse-edid: (deprecated)
 type make -f Makefile.parse-edid
 Shouldn't need anything special.
 
@@ -15,5 +15,16 @@ USAGE: get-eedid [-s] [-d] [-o <output template>] <device path>
     with the page number.  In SMBus mode, it'll just be omitted.
 <device path> Path to i2c device.
 
+)deprecated)
 USAGE: parse-edid <edid file>
 
+
+parse-edid2:
+Not very familiar with python packaging so no idea if the setup.py works but
+you can just run parse-edid2.py from the directory it's in anyway.  You will
+probably need the kaitaistruct runtime.  Only tested with python 3.6, probably
+works on some earlier 3.x pythons, haven't tested any 2.x ones and don't
+really care to.
+
+Running it:
+./parse-edid2.py <path to edid dump>

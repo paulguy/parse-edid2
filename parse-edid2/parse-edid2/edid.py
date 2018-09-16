@@ -294,6 +294,7 @@ class Edid(KaitaiStruct):
 
     class ExtensionType(Enum):
         cea_861 = 2
+        unknown1 = 112
 
     class SyncPolarity(Enum):
         negative = 0
@@ -1492,6 +1493,22 @@ class Edid(KaitaiStruct):
             self._io.align_to_byte()
             self.preferred_vertical_refresh = self._io.read_u1()
 
+        @property
+        def additional_clock_precision(self):
+            if hasattr(self, '_m_additional_clock_precision'):
+                return self._m_additional_clock_precision if hasattr(self, '_m_additional_clock_precision') else None
+
+            self._m_additional_clock_precision = (self.raw_additional_clock_precision * 0.25)
+            return self._m_additional_clock_precision if hasattr(self, '_m_additional_clock_precision') else None
+
+        @property
+        def max_width(self):
+            if hasattr(self, '_m_max_width'):
+                return self._m_max_width if hasattr(self, '_m_max_width') else None
+
+            self._m_max_width = ((self.max_width_msb << 8) | self.max_width_lsb)
+            return self._m_max_width if hasattr(self, '_m_max_width') else None
+
 
     class TwoByteTiming(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
@@ -1510,7 +1527,7 @@ class Edid(KaitaiStruct):
             if hasattr(self, '_m_invalid'):
                 return self._m_invalid if hasattr(self, '_m_invalid') else None
 
-            self._m_invalid =  ((self.xres == 1) and (self.aspect == self._root.TimingAspect.aspect_16_10_1_1) and (self.raw_rate == 1)) 
+            self._m_invalid =  ((self.xres == 1) and (self.aspect == self._root.TimingAspect.aspect1610) and (self.raw_rate == 1)) 
             return self._m_invalid if hasattr(self, '_m_invalid') else None
 
         @property

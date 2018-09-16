@@ -243,7 +243,7 @@ types:
         type: b6
     instances:
       invalid:
-        value: (xres == 1 and aspect == timing_aspect::aspect_16_10_1_1 and raw_rate == 1)
+        value: (xres == 1 and aspect == timing_aspect::aspect1610 and raw_rate == 1)
       width:
         value: (xres + 31) * 8
       rate:
@@ -629,6 +629,11 @@ types:
         type: b4
       - id: preferred_vertical_refresh
         type: u1
+    instances:
+      additional_clock_precision:
+        value: raw_additional_clock_precision * 0.25
+      max_width:
+        value: max_width_msb << 8 | max_width_lsb
   display_range_limits:
     seq:
       - id: unused
@@ -1030,6 +1035,7 @@ enums:
     4: aspect1509
   extension_type:
     2: cea_861
+    112: unknown1
   cea_861_data_block_type:
     1: audio
     2: video
