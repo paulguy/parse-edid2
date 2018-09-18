@@ -1,0 +1,10 @@
+More complete python version of the EDID parser.
+
+Uses kaitai struct so you'll need the runtime for that.
+
+Tested with python 3.6 but probably works with earlier ones.
+
+just run it with ./parse-edid2.py <path to edid dump>
+
+I don't know how python packaging works so no idea if that setup.py does
+anything useful or not.

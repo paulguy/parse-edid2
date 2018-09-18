@@ -77,6 +77,7 @@ class Edid(KaitaiStruct):
         aspect1509 = 4
 
     class Cea861VideoFormat(Enum):
+        unknown0 = 0
         format_006400480ps060 = 1
         format_007200480ps060 = 2
         format_007200480pw060 = 3
@@ -294,7 +295,7 @@ class Edid(KaitaiStruct):
 
     class ExtensionType(Enum):
         cea_861 = 2
-        unknown1 = 112
+        unknown112 = 112
 
     class SyncPolarity(Enum):
         negative = 0
@@ -1411,7 +1412,7 @@ class Edid(KaitaiStruct):
                 io = KaitaiStream(BytesIO(self._raw_video_block))
                 self.video_block = self._root.Cea861VideoDataBlock(io, self, self._root)
 
-            if self.type == self._root.Cea861DataBlockType.vendor_specific:
+            if self.type == self._root.Cea861DataBlockType.vendor_defined:
                 self._raw_vendor_block = self._io.read_bytes(self.size)
                 io = KaitaiStream(BytesIO(self._raw_vendor_block))
                 self.vendor_block = self._root.Cea861VendorDataBlock(io, self, self._root)
@@ -1631,14 +1632,14 @@ class Edid(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.extension_type = self._root.ExtensionType(self._io.read_u1())
+            self.type = self._root.ExtensionType(self._io.read_u1())
 
         @property
         def cea_861(self):
             if hasattr(self, '_m_cea_861'):
                 return self._m_cea_861 if hasattr(self, '_m_cea_861') else None
 
-            if self.extension_type == self._root.ExtensionType.cea_861:
+            if self.type == self._root.ExtensionType.cea_861:
                 _pos = self._io.pos()
                 self._io.seek(0)
                 self._raw__m_cea_861 = self._io.read_bytes(127)

@@ -15,6 +15,39 @@ def printTwoByteTiming(timing, vermaj, vermin):
         aspect = aspectFromTimingAspect(timing.aspect, vermaj, vermin)
         print("{}x{}@{}hz".format(timing.width, int(timing.width / aspect), timing.rate))
 
+def parseDtd(dtd):
+    print("Pixel Clock: {} Mhz".format(dtd.pixel_clock))
+    print("Horizontal Active Pixels: {}".format(dtd.hactive))
+    print("Horizontal Blanking Pixels: {}".format(dtd.hblank))
+    print("Vertical Active Lines: {}".format(dtd.vactive))
+    print("Vertical Blanking Lines: {}".format(dtd.vblank))
+    print("Horizontal Front Porch Pixels: {}".format(dtd.hfront_porch))
+    print("Horizontal Sync Pulse Pixels: {}".format(dtd.hsync_pulse))
+    print("Vertical Front Porch Lines: {}".format(dtd.vfront_porch))
+    print("Vertical Sync Pulse Lines: {}".format(dtd.vsync_pulse))
+    print("Width: {} mm".format(dtd.width))
+    print("Height: {} mm".format(dtd.height))
+    print("Horizontal Border Pixels: {}".format(dtd.hborder))
+    print("Vertical Border Lines: {}".format(dtd.vborder))
+    if dtd.interlaced:
+        print("Interlaced")
+    print("Stereo Mode:", dtd.stereo_mode.name)
+    print("Sync Signal Type:", dtd.sync_signal_type.name)
+    if dtd.sync_signal_type == Edid.SyncSignalType.analog:
+        print("Analog Sync Type:", dtd.analog_sync_type.name)
+        if dtd.analog_vsync_serration:
+            print("VSync serration (HSync during VSync)")
+        if dtd.sync_on_all:
+            print("Sync on all 3 RGB lines (else green only)")
+    else:
+        print("Digital Sync Type:", dtd.digital_sync_type.name)
+        if dtd.digital_sync_type == Edid.DigitalSyncType.composite:
+            print("Vertical Sync Polarity:", dtd.digital_vsync_polarity.name)
+        else:
+            if dtd.digital_vsync_serration:
+                print("VSync serration (HSync during VSync)")
+            print("Horizontal Sync Polarity:", dtd.digital_hsync_polarity.name)
+
 if __name__ == '__main__':
     edid = Edid.from_file(sys.argv[1])
 
@@ -103,38 +136,7 @@ if __name__ == '__main__':
     for desc in enumerate(edid.descriptor_blocks.descriptor_block):
         if desc[1].is_dtd:
             print("** {}: Detailed Timing Descriptor **".format(desc[0]))
-            dtd = desc[1].dtd
-            print("Pixel Clock: {} Mhz".format(dtd.pixel_clock))
-            print("Horizontal Active Pixels: {}".format(dtd.hactive))
-            print("Horizontal Blanking Pixels: {}".format(dtd.hblank))
-            print("Vertical Active Lines: {}".format(dtd.vactive))
-            print("Vertical Blanking Lines: {}".format(dtd.vblank))
-            print("Horizontal Front Porch Pixels: {}".format(dtd.hfront_porch))
-            print("Horizontal Sync Pulse Pixels: {}".format(dtd.hsync_pulse))
-            print("Vertical Front Porch Lines: {}".format(dtd.vfront_porch))
-            print("Vertical Sync Pulse Lines: {}".format(dtd.vsync_pulse))
-            print("Width: {} mm".format(dtd.width))
-            print("Height: {} mm".format(dtd.height))
-            print("Horizontal Border Pixels: {}".format(dtd.hborder))
-            print("Vertical Border Lines: {}".format(dtd.vborder))
-            if dtd.interlaced:
-                print("Interlaced")
-            print("Stereo Mode:", dtd.stereo_mode.name)
-            print("Sync Signal Type:", dtd.sync_signal_type.name)
-            if dtd.sync_signal_type == Edid.SyncSignalType.analog:
-                print("Analog Sync Type:", dtd.analog_sync_type.name)
-                if dtd.analog_vsync_serration:
-                    print("VSync serration (HSync during VSync)")
-                if dtd.sync_on_all:
-                    print("Sync on all 3 RGB lines (else green only)")
-            else:
-                print("Digital Sync Type:", dtd.digital_sync_type.name)
-                if dtd.digital_sync_type == Edid.DigitalSyncType.composite:
-                    print("Vertical Sync Polarity:", dtd.digital_vsync_polarity.name)
-                else:
-                    if dtd.digital_vsync_serration:
-                        print("VSync serration (HSync during VSync)")
-                    print("Horizontal Sync Polarity:", dtd.digital_hsync_polarity.name)
+            parseDtd(desc[1].dtd)
             print()
         else: # not a DTD
             num = desc[0]
@@ -239,4 +241,98 @@ if __name__ == '__main__':
                 desc = desc[1].desc.display_serial
                 print("** {}: Display Serial **".format(num))
                 print("Serial:", desc.text.decode('cp437'))
+
+    if edid.extensions > 0:
+        print("*** Extensions ***")
+        for extension in enumerate(edid.extension):
+            num = extension[0]
+            if extension[1].type == Edid.ExtensionType.cea_861:
+                print("** {}: CEA-861 **".format(num))
+                extension = extension[1].cea_861
+                print("Version: {}".format(extension.version))
+                if extension.underscan:
+                    print("Underscan supported")
+                if extension.basic_audio:
+                    print("Basic audio supported")
+                if extension.ycbcr_444:
+                    print("YCbCr 4:4:4 supported")
+                if extension.ycbcr_422:
+                    print("YCbCr 4:2:2 supported")
+                print("Native DTDs: {}".format(extension.native_dtds))
+                print()
+                if extension.dtd_pos >= 4:
+                    if extension.dtd_pos > 4:
+                        print("* DTDs *")
+                        for dtd in enumerate(extension.dtd_collection.dtds):
+                            num = dtd[0]
+                            dtd = dtd[1]
+                            if not dtd.is_dtd:
+                                continue
+                            print("DTD: {}".format(num))
+                            parseDtd(dtd.dtd)
+                            print()
+                    for data_block in enumerate(extension.data_block_collection.data_blocks):
+                        if data_block[1].type == Edid.Cea861DataBlockType.audio:
+                            print("* {}: Audio Descriptors *".format(data_block[0]))
+                            for desc in enumerate(data_block[1].audio_block.descriptors):
+                                num = desc[0]
+                                desc = desc[1]
+                                print("Descriptor {}".format(num))
+                                print("Format:", desc.format.name)
+                                print("Channels: {}".format(desc.channels))
+                                for khz in desc.__dict__.keys():
+                                    if khz[:4] == 'khz_':
+                                        if desc.__dict__[khz] == True:
+                                            print("{} kHz supported".format(int(khz[4:])))
+                                if desc.format == Edid.Cea861AudioFormat.lpcm:
+                                    for bits in desc.__dict__.keys():
+                                        if bits[:5] == 'bits_':
+                                            if desc.__dict__[bits] == True:
+                                                print("{} bits supported".format(int(bits[5:])))
+                                else:
+                                    print("Max Bitrate: {}".format(desc.max_bitrate))
+                                print()
+                        elif data_block[1].type == Edid.Cea861DataBlockType.video:
+                            print("* {}: Video Descriptors *".format(data_block[0]))
+                            for format in data_block[1].video_block.format:
+                                if format.name[:7] == 'unknown':
+                                    print("Unknown Mode")
+                                    continue
+                                width = int(format.name[7:12])
+                                height = int(format.name[12:16])
+                                rate = int(format.name[18:21])
+                                print("{}x{}@{}Hz".format(width, height, rate), end='')
+                                if height == 240 or height == 288 or \
+                                   height == 480 or height == 576:
+                                    if width == 1440:
+                                        print(" (2x HScale)", end = '')
+                                    elif width == 2880:
+                                        print(" (4x HScale)", end = '')
+                                if format.name[16] == 'p':
+                                    print(" (Progressive)", end = '')
+                                elif format.name[16] == 'i':
+                                    print(" (Interlaced)", end = '')
+                                if format.name[17] == 's':
+                                    print(" (4:3 (Squarish))", end = '')
+                                elif format.name[17] == 'w':
+                                    print(" (16:9 (Wide))", end = '')
+                                elif format.name[17] == 'c':
+                                    print(" (256:135 (Cinema))", end = '')
+                                elif format.name[17] == 'u':
+                                    print(" (64:27 (Ultrawide))", end = '')
+                                if len(format.name) == 22:
+                                    print(" (1250 Lines)", end = '')
+                                print()
+                            print()
+                        elif data_block[1].type == Edid.Cea861DataBlockType.vendor_defined:
+                            print("* {}: Vendor Defined *".format(data_block[0]))
+                            print("Type: {}".format(data_block[0].vendor_block.type))
+                            print()
+                        elif data_block[1].type == Edid.Cea861DataBlockType.speaker_allocation:
+                            print("* {}: Speaker Allocation *".format(data_block[0]))
+                            desc = data_block[1].speaker_block
+                            for speaker in desc.__dict__.keys():
+                                if speaker[:8] != 'reserved':
+                                    if desc.__dict__[speaker] == True:
+                                        print(speaker.replace('_', ' '))
 

@@ -28,3 +28,8 @@ really care to.
 
 Running it:
 ./parse-edid2.py <path to edid dump>
+
+
+I would like some more EDID samples.  I'd put up the ones I have but I'm
+unclear about distribution rights for EDID dumps so I'm going to err on the
+side of caution until I hear otherwise.

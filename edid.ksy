@@ -847,7 +847,7 @@ types:
       - id: vendor_block
         type: cea_861_vendor_data_block
         size: size
-        if: type == cea_861_data_block_type::vendor_specific
+        if: type == cea_861_data_block_type::vendor_defined
       - id: speaker_block
         type: cea_861_speaker_data_block
         size: size
@@ -905,7 +905,7 @@ types:
         if: dtd_pos >= 4
   extension:
     seq:
-      - id: extension_type
+      - id: type
         enum: extension_type
         type: u1
     instances:
@@ -913,7 +913,7 @@ types:
         type: cea_861
         pos: 0
         size: 127
-        if: extension_type == extension_type::cea_861
+        if: type == extension_type::cea_861
       checksum:
         type: u1
         pos: 127
@@ -1035,7 +1035,7 @@ enums:
     4: aspect1509
   extension_type:
     2: cea_861
-    112: unknown1
+    112: unknown112
   cea_861_data_block_type:
     1: audio
     2: video
@@ -1057,6 +1057,7 @@ enums:
     13: dst
     14: wmapro
   cea_861_video_format:
+    0: unknown0
     1: format_006400480ps060
     2: format_007200480ps060
     3: format_007200480pw060
