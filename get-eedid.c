@@ -47,12 +47,12 @@ int main(int argc, char **argv) {
         int option_index = 0;
         static struct option long_options[] = {
             {"smbus",           no_argument,        0, 's'},
-            {"eedid",           no_argument,        0, 'e'},
+            {"ddc2b",           no_argument,        0, 'd'},
             {"output-template", required_argument,  0, 'o'},
             {0,                 0,                  0, 0}
         };
 
-        c = getopt_long(argc, argv, "seo:",
+        c = getopt_long(argc, argv, "sdo:",
                         long_options, &option_index);
         if(c == -1) break;
 
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
             case 's':
                 mode = SMBUS;
                 break;
-            case 'e':
+            case 'd':
                 mode = EEDID;
                 break;
             case 'o':
