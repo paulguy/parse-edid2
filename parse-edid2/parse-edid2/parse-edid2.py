@@ -49,6 +49,9 @@ def parseDtd(dtd):
             print("Horizontal Sync Polarity:", dtd.digital_hsync_polarity.name)
 
 if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("USAGE: parse-edid2.py <EDID file>")
+        sys.exit(0)
     edid = Edid.from_file(sys.argv[1])
 
     print("Checksum: {} ".format(edid.checksum), end='')
@@ -289,7 +292,13 @@ if __name__ == '__main__':
                                         if bits[:5] == 'bits_':
                                             if desc.__dict__[bits] == True:
                                                 print("{} bits supported".format(int(bits[5:])))
-                                else:
+                                elif (desc.format == Edid.Cea861AudioFormat.ac3 or
+                                      desc.format == Edid.Cea861AudioFormat.mpeg1 or
+                                      desc.format == Edid.Cea861AudioFormat.mp3 or
+                                      desc.format == Edid.Cea861AudioFormat.mpeg2 or
+                                      desc.format == Edid.Cea861AudioFormat.aac or
+                                      desc.format == Edid.Cea861AudioFormat.dts or
+                                      desc.format == Edid.Cea861AudioFormat.atrac):
                                     print("Max Bitrate: {}".format(desc.max_bitrate))
                                 print()
                         elif data_block[1].type == Edid.Cea861DataBlockType.video:

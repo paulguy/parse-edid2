@@ -221,7 +221,7 @@ types:
         type: b1
       - id: mode1024060060
         type: b1
-      - id: mode1024076872
+      - id: mode1024076870
         type: b1
       - id: mode1024076875
         type: b1
@@ -820,7 +820,7 @@ types:
         if: format == cea_861_audio_format::lpcm
       - id: max_bitrate
         type: u1
-        if: format != cea_861_audio_format::lpcm
+        if: format == cea_861_audio_format::ac3 or format == cea_861_audio_format::mpeg1 or format == cea_861_audio_format::mp3 or format == cea_861_audio_format::mpeg2 or format == cea_861_audio_format::aac or format == cea_861_audio_format::dts or format == cea_861_audio_format::atrac
     instances:
       channels:
         value: raw_channels + 1

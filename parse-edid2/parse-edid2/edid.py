@@ -365,7 +365,7 @@ class Edid(KaitaiStruct):
             self.mode0832062475 = self._io.read_bits_int(1) != 0
             self.mode1024076887i = self._io.read_bits_int(1) != 0
             self.mode1024060060 = self._io.read_bits_int(1) != 0
-            self.mode1024076872 = self._io.read_bits_int(1) != 0
+            self.mode1024076870 = self._io.read_bits_int(1) != 0
             self.mode1024076875 = self._io.read_bits_int(1) != 0
             self.mode1280102475 = self._io.read_bits_int(1) != 0
             self.mode1152087075 = self._io.read_bits_int(1) != 0
@@ -998,7 +998,7 @@ class Edid(KaitaiStruct):
                 self.bits_16 = self._io.read_bits_int(1) != 0
 
             self._io.align_to_byte()
-            if self.format != self._root.Cea861AudioFormat.lpcm:
+            if  ((self.format == self._root.Cea861AudioFormat.ac3) or (self.format == self._root.Cea861AudioFormat.mpeg1) or (self.format == self._root.Cea861AudioFormat.mp3) or (self.format == self._root.Cea861AudioFormat.mpeg2) or (self.format == self._root.Cea861AudioFormat.aac) or (self.format == self._root.Cea861AudioFormat.dts) or (self.format == self._root.Cea861AudioFormat.atrac)) :
                 self.max_bitrate = self._io.read_u1()
 
 
