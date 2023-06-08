@@ -312,6 +312,7 @@ class Edid(KaitaiStruct):
         digital = 1
 
     class DescType(Enum):
+        dummy_descriptor = 16
         additional_standard_timings = 247
         three_byte_timings = 248
         display_color_management = 249
@@ -502,6 +503,19 @@ class Edid(KaitaiStruct):
                 self._io.seek(_pos)
 
             return self._m_three_byte_timings if hasattr(self, '_m_three_byte_timings') else None
+
+        @property
+        def dummy_identifier(self):
+            if hasattr(self, '_m_dummy_identifier'):
+                return self._m_dummy_identifier if hasattr(self, '_m_dummy_identifier') else None
+
+            if self.type == self._root.DescType.dummy_descriptor:
+                _pos = self._io.pos()
+                self._io.seek(4)
+                self._m_dummy_identifier = self._root.TextDescriptor(self._io, self, self._root)
+                self._io.seek(_pos)
+
+            return self._m_dummy_identifier if hasattr(self, '_m_dummy_identifier') else None
 
         @property
         def additional_standard_timings(self):

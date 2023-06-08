@@ -722,6 +722,10 @@ types:
         type: text_descriptor
         pos: 5
         if: type == desc_type::display_serial
+      dummy_identifier:
+        type: text_descriptor
+        pos: 4
+        if: type == desc_type::dummy_descriptor
       unknown:
         type: unknown_descriptor
   descriptor_block:
@@ -1008,6 +1012,7 @@ enums:
     6: four_way_interleaved
     7: side_by_side
   desc_type:
+    0x10: dummy_descriptor
     0xF7: additional_standard_timings
     0xF8: three_byte_timings
     0xF9: display_color_management
