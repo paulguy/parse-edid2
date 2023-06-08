@@ -33,3 +33,36 @@ Running it:
 I would like some more EDID samples.  I'd put up the ones I have but I'm
 unclear about distribution rights for EDID dumps so I'm going to err on the
 side of caution until I hear otherwise.
+
+match-display.py
+Match a display based on criteria provided on the command line.  Checks in
+/sys/class/drm/ and scans each device's provided EDID and will match values
+provided as name=value pairs on the command line.  Will return an xrandr
+device name which can be used in scripts (examples provided) to perform
+various actions on displays.  I haven't tested this on many devices at all, so
+there will probably be compatibility issues and bugs.
+
+Usage:
+./match-display.py [name=value] ...
+
+Provide no criteria to get a list.
+
+Criteria which can be matched are:
+These may be given in mixed case and may include spaces or _s
+Any can be given, but a match will only be returned if it's unique among
+connected displays.
+Not all fields may be available for any given device.
+
+card - the GPU/card ID
+connectortype - type of connector, DisplayPort/HDMI/etc
+connector - the number of the connector
+headerchecksum - the checksum of the EDID provided by the EDID
+calcchecksum or calculatedchecksum - the checksum as calculated
+manufacturerid - 3 letter manufacturer ID, any case is fine
+productcode - numerical product code
+numericserial - numerical serial number
+prodweek or productionweek - week of production
+prodyear or productionyear - year of production
+modelyear - model year
+name - name of the device
+serial - serial number (may be different from numericserial)
